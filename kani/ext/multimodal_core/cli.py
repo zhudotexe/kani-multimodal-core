@@ -1,3 +1,5 @@
+# TODO
+
 import asyncio
 import importlib.util
 import logging
@@ -11,7 +13,8 @@ import warnings
 from kani import Kani
 from kani.models import MessagePartType
 from kani.utils.message_formatters import assistant_message_contents_thinking
-from .parts import ImagePart
+
+from .image import ImagePart
 
 _has_ascii = importlib.util.find_spec("ascii_magic") is not None
 _is_notebook = "ipykernel" in sys.modules
