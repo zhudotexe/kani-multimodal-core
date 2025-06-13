@@ -27,6 +27,7 @@ dependencies = [
     "numpy>=2.0.0,<3.0.0",
     "Pillow>=9.0.0",
     "pydub>=0.20.0,<1.0.0",
+    "audioop-lts>=0.2.1; python_version >= '3.13'",
 ]
 
 # This tells the build system that the kani directory contains a namespace package
