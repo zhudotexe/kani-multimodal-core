@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kani-multimodal-core"
-version = "0.0.1"
+dynamic = ["version"]
 authors = [
     { name = "Andrew Zhu", email = "andrew@zhu.codes" },
 ]
@@ -30,14 +30,17 @@ dependencies = [
     "audioop-lts>=0.2.1; python_version >= '3.13'",
 ]
 
+[project.urls]
+"Homepage" = "https://github.com/zhudotexe/kani-multimodal-core"
+"Bug Tracker" = "https://github.com/zhudotexe/kani-multimodal-core/issues"
+
+[tool.hatch]
+version.path = "kani/ext/multimodal_core/_version.py"
+
 # This tells the build system that the kani directory contains a namespace package
 # Don't touch it unless you know what you're doing!
 [tool.hatch.build.targets.wheel]
 packages = ["kani"]
-
-[project.urls]
-"Homepage" = "https://github.com/zhudotexe/kani-multimodal-core"
-"Bug Tracker" = "https://github.com/zhudotexe/kani-multimodal-core/issues"
 
 [tool.black]
 line-length = 120
