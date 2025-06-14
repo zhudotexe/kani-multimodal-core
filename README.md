@@ -1,5 +1,3 @@
-from kani.engines.openai import OpenAIEngine
-
 # kani-multimodal-core
 
 This package contains core extensions for using Kani with multimodal language models.

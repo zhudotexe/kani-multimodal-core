@@ -1,5 +1,6 @@
 import fnmatch
 import logging
+import mimetypes
 from typing import IO
 
 import aiohttp
@@ -7,6 +8,23 @@ import aiohttp
 from .exceptions import MediaFormatException
 
 log = logging.getLogger(__name__)
+
+
+async def get_mime_type(url) -> str:
+    """
+    Get the MIME type for the content hosted at the given URL.
+
+    First bases it off the URL's file extension, if present; otherwise makes a HEAD request.
+    """
+    # mimetypes guess
+    mime, _ = mimetypes.guess_type(url)
+    if mime is not None:
+        return mime
+
+    # HEAD request
+    async with aiohttp.ClientSession() as session:
+        async with session.head(url, allow_redirects=True) as resp:
+            return resp.content_type
 
 
 async def download_media(url: str, f: IO, *, allowed_mime=("image/*", "audio/*", "video/*")):
