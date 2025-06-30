@@ -104,6 +104,33 @@ async def parts_from_cli_query(query: str) -> list[MessagePartType]:
 
 
 # ==== media display helpers ====
+def display_media(
+    parts: list[MessagePartType],
+    *,
+    show_text=False,
+):
+    """
+    Display a simplified list of included media parts included in the query.
+
+    :param parts: The list of parts to display.
+    :param show_text: Whether to echo text parts or only display media parts.
+    """
+    # show each part in an IPython display
+    for part in parts:
+        if isinstance(part, (str, TextPart)):
+            if show_text:
+                print(str(part))
+        elif isinstance(part, ImagePart):
+            print(f"[Uploading image {part.mime} {part.size}...]")
+        elif isinstance(part, AudioPart):
+            print(f"[Uploading audio {part.duration}...]")
+        # TODO
+        # elif isinstance(part, VideoPart):
+        #     display(Video(filename=part.as_tempfile(), height=media_height))
+        else:
+            print(str(part))
+
+
 def display_media_ipython(
     parts: list[MessagePartType],
     *,
@@ -121,8 +148,9 @@ def display_media_ipython(
 
     # show each part in an IPython display
     for part in parts:
-        if isinstance(part, (str, TextPart)) and show_text:
-            print(str(part))
+        if isinstance(part, (str, TextPart)):
+            if show_text:
+                print(str(part))
         elif isinstance(part, ImagePart):
             display(Image(part.as_bytes(), height=media_height))
         elif isinstance(part, AudioPart):
