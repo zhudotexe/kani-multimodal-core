@@ -28,6 +28,7 @@ class ImagePart(BaseMultimodalPart, arbitrary_types_allowed=True):
     """
 
     image: Image.Image
+    """The PIL Image object containing the referenced image."""
 
     # ==== constructors ====
     @classmethod
@@ -98,7 +99,7 @@ class ImagePart(BaseMultimodalPart, arbitrary_types_allowed=True):
 
         .. warning::
 
-            Note that this array is in (height, width, channels) dimensionality, unlike :meth:`to_tensor` which
+            Note that this array is in (height, width, channels) dimensionality, unlike :meth:`as_tensor` which
             return a tensor in (channels, height, width) dimensionality.
         """
         return np.asarray(self.image)
@@ -109,7 +110,7 @@ class ImagePart(BaseMultimodalPart, arbitrary_types_allowed=True):
 
         .. warning::
 
-            Note that this tensor is in (channels, height, width) dimensionality, unlike :meth:`to_ndarray` which
+            Note that this tensor is in (channels, height, width) dimensionality, unlike :meth:`as_ndarray` which
             return an array in (height, width, channels) dimensionality.
         """
         try:

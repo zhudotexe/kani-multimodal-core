@@ -30,7 +30,10 @@ class AudioPart(BaseMultimodalPart):
     """
 
     raw: bytes = Field(repr=False)
+    """The raw binary data in signed 16-bit little-endian mono PCM format."""
+
     sample_rate: int
+    """The sample rate of the binary data."""
 
     # ==== constructors ====
     @classmethod
