@@ -57,7 +57,7 @@ msg = await ai.chat_round_str([
 print(msg)
 ```
 
-See the docs (TODO) for more information about the provided message parts.
+See the docs (https://kani-multimodal-core.readthedocs.io) for more information about the provided message parts.
 
 ### Terminal Utility
 
