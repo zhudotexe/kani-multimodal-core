@@ -151,3 +151,7 @@ class ImagePart(BaseMultimodalPart, arbitrary_types_allowed=True):
         if isinstance(v, dict) and "img_data" in v:
             return cls.from_b64_uri(v["img_data"])
         return nxt(v)
+
+    # ==== lifecycle ====
+    def __del__(self):
+        self.image.close()
