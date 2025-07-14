@@ -16,6 +16,7 @@ from .audio import AudioPart
 from .base import TextPart
 from .image import ImagePart
 from .utils import get_mime_type
+from .video import VideoPart
 
 _is_notebook = "ipykernel" in sys.modules
 
@@ -67,9 +68,8 @@ async def parts_from_cli_query(query: str) -> list[MessagePartType]:
                     query_parts.append(ImagePart.from_file(fp))
                 elif mime.startswith("audio/"):
                     query_parts.append(AudioPart.from_file(fp))
-                # TODO
-                # elif mime.startswith("video/"):
-                #     query_parts.append(VideoPart.from_file(fp))
+                elif mime.startswith("video/"):
+                    query_parts.append(VideoPart.from_file(fp))
                 else:
                     warnings.warn(
                         f"I could not understand the filetype of the given file: {fp}\n(expected MIME type to be one of"
@@ -88,9 +88,8 @@ async def parts_from_cli_query(query: str) -> list[MessagePartType]:
                 query_parts.append(await ImagePart.from_url(url))
             elif mime.startswith("audio/"):
                 query_parts.append(await AudioPart.from_url(url))
-            # TODO
-            # elif mime.startswith("video/"):
-            #     query_parts.append(await VideoPart.from_url(url))
+            elif mime.startswith("video/"):
+                query_parts.append(await VideoPart.from_url(url))
             else:
                 warnings.warn(
                     f"I could not understand the filetype of the given URL: {url}\n(expected MIME type to be one of"
@@ -123,10 +122,9 @@ def display_media(
         elif isinstance(part, ImagePart):
             print(f"[Uploading image {part.mime} {part.size}...]")
         elif isinstance(part, AudioPart):
-            print(f"[Uploading audio {part.duration}...]")
-        # TODO
-        # elif isinstance(part, VideoPart):
-        #     display(Video(filename=part.as_tempfile(), height=media_height))
+            print(f"[Uploading audio ({part.duration:.2f}s, {len(part.raw)/1000:.1f}kB)...]")
+        elif isinstance(part, VideoPart):
+            print(f"[Uploading video ({part.duration:.2f}s, {part.filesize/1000:.1f}kB)...]")
         else:
             print(str(part))
 
@@ -144,7 +142,7 @@ def display_media_ipython(
     :param show_text: Whether to echo text parts or only display media parts.
     :param media_height: The height to display image and video media parts at.
     """
-    from IPython.display import Audio, Image, display
+    from IPython.display import Audio, Image, Video, display
 
     # show each part in an IPython display
     for part in parts:
@@ -155,8 +153,7 @@ def display_media_ipython(
             display(Image(part.as_bytes(), height=media_height))
         elif isinstance(part, AudioPart):
             display(Audio(data=part.raw, rate=part.sample_rate))
-        # TODO
-        # elif isinstance(part, VideoPart):
-        #     display(Video(filename=part.as_tempfile(), height=media_height))
+        elif isinstance(part, VideoPart):
+            display(Video(filename=part.as_tempfile(), height=media_height))
         else:
             print(str(part))

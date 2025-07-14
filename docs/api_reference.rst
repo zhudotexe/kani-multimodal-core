@@ -18,4 +18,24 @@ Audio
 Video
 -----
 
-WIP
+.. autoclass:: kani.ext.multimodal_core.VideoPart
+    :members:
+    :class-doc-from: class
+
+Binary File
+-----------
+
+.. autoclass:: kani.ext.multimodal_core.BinaryFilePart
+    :members:
+    :class-doc-from: class
+
+Base
+----
+
+.. autoclass:: kani.ext.multimodal_core.BaseMultimodalPart
+    :members:
+    :class-doc-from: class
+
+.. autoclass:: kani.ext.multimodal_core.TextPart
+    :members:
+    :class-doc-from: class

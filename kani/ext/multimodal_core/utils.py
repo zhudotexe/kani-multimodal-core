@@ -1,6 +1,7 @@
 import fnmatch
 import logging
 import mimetypes
+from collections import namedtuple
 from typing import IO
 
 import aiohttp
@@ -27,6 +28,9 @@ async def get_mime_type(url) -> str:
             return resp.content_type
 
 
+DownloadResult = namedtuple("DownloadResult", "mime bytes_downloaded")
+
+
 async def download_media(url: str, f: IO, *, allowed_mime=("image/*", "audio/*", "video/*")):
     """
     Download the content at the given URL to the given file-like object.
@@ -35,12 +39,13 @@ async def download_media(url: str, f: IO, *, allowed_mime=("image/*", "audio/*",
     globs in the ``allowed_mime`` parameter (e.g., ``allowed_mime=("*",)`` to allow downloading any media).
 
     :param url: The URL to download the media from.
-    :param f: The file-like object to write the media content to.
+    :param f: A writable binary file-like object to write the media content to.
     :param allowed_mime: A list of globs that the remote media MIME type must match one of.
     """
     if not allowed_mime:
         raise ValueError("Expected at least one allowed MIME type")
     log.debug(f"Downloading media from url: {url}")
+    bytes_downloaded = 0
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             mime = resp.content_type
@@ -48,3 +53,5 @@ async def download_media(url: str, f: IO, *, allowed_mime=("image/*", "audio/*",
                 raise MediaFormatException(f"Invalid MIME type: Expected one of {allowed_mime!r}, got {mime!r}")
             async for chunk in resp.content.iter_chunked(4096):
                 f.write(chunk)
+                bytes_downloaded += len(chunk)
+    return DownloadResult(mime=mime, bytes_downloaded=bytes_downloaded)
