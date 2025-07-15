@@ -4,6 +4,7 @@
 torch
 torchvision
 torchaudio
+torchcodec
 
 # test deps
 soundfile
