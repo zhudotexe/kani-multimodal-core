@@ -9,12 +9,11 @@ TEST_VIDEO_PATH = Path(REPO_ROOT / "tests/data/test.mp4")
 
 def test_from_file():
     part = VideoPart.from_file(TEST_VIDEO_PATH)
-    assert part.filesize == 8074625
-    assert part.duration == 219.080272
+    assert part.filesize == 9122437
+    assert part.duration == 219.099
     assert part.resolution == (480, 360)
     assert part.mime == "video/mp4"
-    # assert part.as_ndarray().shape == (768, 1024, 3)
-    # assert part.as_tensor().shape == (3, 768, 1024)
+    assert part.as_tensor().shape == (220, 3, 360, 480)
 
 
 def test_roundtrip_b64():

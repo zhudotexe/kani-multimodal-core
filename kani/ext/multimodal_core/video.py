@@ -3,8 +3,6 @@ import json
 import subprocess
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from .base import BinaryFilePart
 
 if TYPE_CHECKING:
@@ -21,7 +19,7 @@ class VideoPart(BinaryFilePart, arbitrary_types_allowed=True):
     When serialized, video data is represented as a data URI. This can lead to some really big files!
 
     To get video data in a suitable format for downstream applications, use :meth:`as_b64`, :meth:`as_bytes`,
-    :meth:`as_ndarray`, or :meth:`as_tensor`.
+    or :meth:`as_tensor`.
     """
 
     _duration: float = None
@@ -41,35 +39,41 @@ class VideoPart(BinaryFilePart, arbitrary_types_allowed=True):
         return await super().from_url(url, allowed_mime=allowed_mime, **kwargs)
 
     # ==== representations ====
-    def as_ndarray(self) -> np.ndarray:
-        """
-        Get the pixel-wise image data as a NumPy array (h*w*c).
-
-        .. warning::
-
-            Note that this array is in (height, width, channels) dimensionality, unlike :meth:`as_tensor` which
-            return a tensor in (channels, height, width) dimensionality.
-        """
-        return np.asarray(self.image)
-
-    def as_tensor(self) -> "torch.Tensor":
+    def as_tensor(self, fps: float = 1, start: float = None, end: float = None) -> "torch.Tensor":
         """
         Get the time-pixel-wise video data as a PyTorch tensor (t*c*h*w).
 
-        .. warning::
+        .. important::
 
-            Note that this tensor is in (time, channels, height, width) dimensionality, unlike :meth:`as_ndarray` which
-            return an array in (height, width, channels) dimensionality.
+            Note that this tensor is in (time, channels, height, width) dimensionality.
+
+        :param fps: The number of frames per second (default 1).
+        :param start: The time, in seconds, to start at.
+        :param start: The time, in seconds, to end at.
         """
         try:
-            from torchvision.transforms.functional import pil_to_tensor
+            from torchcodec.decoders import VideoDecoder
+            from torchcodec.samplers import clips_at_regular_timestamps
         except ImportError:
             raise ImportError(
-                "PyTorch or torchvision is not installed in your environment. Please install `torch` and `torchvision`"
+                "PyTorch or torchcodec is not installed in your environment. Please install `torch` and `torchcodec`"
                 " to use `.as_tensor`."
             ) from None
-
-        return pil_to_tensor(self.image)
+        except RuntimeError as e:  # raised when torchcodec can't find ffmpeg or pytorch
+            raise ImportError(
+                "Could not find a torchcodec dependency. Please make sure `torch` and `ffmpeg` are installed. If you"
+                " are on macOS and have installed ffmpeg through Homebrew, you may need to run `export"
+                " DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib` in order for torchcodec to find ffmpeg, or install"
+                " ffmpeg through conda."
+            ) from e
+        self.file.seek(0)
+        decoder = VideoDecoder(self.file)
+        seconds_between = 1 / fps
+        # (num_clips, 1, C, H, W)
+        clips = clips_at_regular_timestamps(
+            decoder, seconds_between_clip_starts=seconds_between, sampling_range_start=start, sampling_range_end=end
+        )
+        return clips.data.squeeze(dim=1)
 
     # ==== helpers ====
     def _ffprobe(self):
