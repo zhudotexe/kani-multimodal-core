@@ -6,6 +6,7 @@ import os
 import re
 import tempfile
 import typing
+import zlib
 
 from kani import MessagePart
 from kani.utils.typing import PathLike
@@ -146,8 +147,9 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
     # ==== serdes ====
     @model_serializer(when_used="json")
     def _serialize_binary_file_part(self) -> dict[str, str]:
-        """When we serialize to JSON, save the data as B64."""
-        return {"mime": self.mime, "data": self.as_b64()}
+        """When we serialize to JSON, save the data as compressed B64."""
+        compressed_b64 = base64.b64encode(zlib.compress(self.as_bytes())).decode()
+        return {"mime": self.mime, "compression": "gzip", "data": compressed_b64}
 
     # noinspection PyNestedDecorators
     @model_validator(mode="wrap")
@@ -155,6 +157,9 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
     def _validate_binary_file_part(cls, v, nxt):
         """If the value is the URI we saved, try loading it that way."""
         if isinstance(v, dict) and "data" in v:
+            if v.get("compression") == "gzip":
+                decompressed = zlib.decompress(base64.b64decode(v["data"]))
+                return cls.from_bytes(mime=v["mime"], data=decompressed)
             return cls.from_b64(mime=v["mime"], data=v["data"])
         return nxt(v)
 
