@@ -19,12 +19,6 @@ from .utils import download_media
 class BaseMultimodalPart(MessagePart):
     model_config = ConfigDict(ignored_types=(functools.cached_property,))
 
-    extra: dict = {}
-    """
-    Specific engines may store additional extra data in this dictionary. See an engine's documentation for details about
-    any extras it may store or expect.
-    """
-
 
 class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
     """
