@@ -1,7 +1,9 @@
 """Core MessageParts for Kani multimodal"""
 
 import base64
+import hashlib
 import io
+import warnings
 import wave
 from typing import IO, TYPE_CHECKING
 
@@ -103,19 +105,30 @@ class AudioPart(BaseMultimodalPart):
 
     # ==== representations ====
     # --- raw ---
-    def as_bytes(self, sr: int) -> bytes:
-        """Return the audio data as signed 16-bit little-endian mono PCM at the given sample rate."""
+    def _as_bytes(self, sr: int = None) -> bytes:
+        # this is a private method so the warning's stacklevel is correct
+        if sr is None:
+            warnings.warn(
+                "AudioPart.as_bytes() was called with no explicit sample rate given. Returning at the raw sample rate"
+                f" of {self.sample_rate}! Pass `sr=...` or use `.resample()` to use a different rate.",
+                stacklevel=3,
+            )
+            return self.raw
         if sr == self.sample_rate:
             return self.raw
         # sample to the specified sr and return
         segment = AudioSegment(self.raw, sample_width=2, frame_rate=self.sample_rate, channels=1)
         return segment.set_frame_rate(sr).raw_data
 
-    def as_b64(self, sr: int) -> str:
-        """Return the audio data as Base64-encoded signed 16-bit little-endian mono PCM at the given sample rate."""
-        return base64.b64encode(self.as_bytes(sr)).decode()
+    def as_bytes(self, sr: int = None) -> bytes:
+        """Return the audio data as signed 16-bit little-endian mono PCM at the given sample rate."""
+        return self._as_bytes(sr)
 
-    def as_ndarray(self, sr: int) -> np.ndarray:
+    def as_b64(self, sr: int = None) -> str:
+        """Return the audio data as Base64-encoded signed 16-bit little-endian mono PCM at the given sample rate."""
+        return base64.b64encode(self._as_bytes(sr)).decode()
+
+    def as_ndarray(self, sr: int = None) -> np.ndarray:
         """Return the audio data as a 1-dimensional NumPy array of floats at the given sample rate."""
         # equivalence verify
         # $ ffmpeg -i test.mp3 -ac 1 -ar 24000 test.wav
@@ -129,10 +142,10 @@ class AudioPart(BaseMultimodalPart):
         # audio_ints = np.frombuffer(audio_bytes, dtype=np.int16)
         # audio_wav2 = audio_ints / 32768
         # (audio_wav == audio_wav2).all()
-        audio_ints = np.frombuffer(self.as_bytes(sr), dtype=np.int16)
+        audio_ints = np.frombuffer(self._as_bytes(sr), dtype=np.int16)
         return audio_ints / 32768
 
-    def as_tensor(self, sr: int) -> "torch.Tensor":
+    def as_tensor(self, sr: int = None) -> "torch.Tensor":
         """
         Return the audio data as a 2-dimensional [channel, time] PyTorch Tensor of floats at the given sample rate.
 
@@ -156,7 +169,7 @@ class AudioPart(BaseMultimodalPart):
                 "PyTorch is not installed in your environment. Please install `torch` to use `.as_tensor`."
             ) from None
 
-        audio_ints = torch.frombuffer(self.as_bytes(sr), dtype=torch.int16)
+        audio_ints = torch.frombuffer(self._as_bytes(sr), dtype=torch.int16)
         return audio_ints.div(32768).reshape(1, -1)
 
     # --- WAV ---
@@ -179,6 +192,16 @@ class AudioPart(BaseMultimodalPart):
         return f"data:audio/wav;base64,{wav_b64}"
 
     # ==== helpers ====
+    def resample(self, sample_rate: int) -> "AudioPart":
+        """Return a new AudioPart with the given sample rate."""
+        if sample_rate == self.sample_rate:
+            return self
+        return AudioPart(raw=self._as_bytes(sr=sample_rate), sample_rate=sample_rate)
+
+    def sha256(self) -> bytes:
+        """Return the SHA-256 hash of the raw audio."""
+        return hashlib.sha256(self.raw).digest()
+
     @property
     def duration(self) -> float:
         """The duration of this audio clip, in seconds."""
