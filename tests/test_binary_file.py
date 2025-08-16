@@ -15,6 +15,7 @@ def test_from_file():
     part = BinaryFilePart.from_file(TEST_FILE_PATH)
     assert part.filesize == 1273097
     assert part.mime == "application/pdf"
+    assert part.as_bytes() == TEST_FILE_PATH.read_bytes()
 
 
 async def test_from_url():
@@ -23,7 +24,7 @@ async def test_from_url():
         mime="application/pdf",
     )
     assert part.filesize == 1273097
-    assert part.as_bytes() == BinaryFilePart.from_file(TEST_FILE_PATH).as_bytes()
+    assert part.as_bytes() == TEST_FILE_PATH.read_bytes()
     assert part.mime == "application/pdf"
 
 
@@ -45,7 +46,7 @@ def test_file_like_zip():
             with zf.open("test.pdf") as f:
                 part = BinaryFilePart.from_file(f)
                 assert part.filesize == 1273097
-                assert part.as_bytes() == BinaryFilePart.from_file(TEST_FILE_PATH).as_bytes()
+                assert part.as_bytes() == TEST_FILE_PATH.read_bytes()
                 assert part.mime == "application/pdf"
 
 
