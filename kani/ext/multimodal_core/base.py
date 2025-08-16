@@ -1,22 +1,24 @@
+import abc
 import base64
 import functools
+import hashlib
 import io
 import mimetypes
 import os
 import re
 import tempfile
-import typing
 import zlib
 
 from kani import MessagePart
 from kani.utils.typing import PathLike
 from pydantic import ConfigDict, model_serializer, model_validator
 
+from .types import BinaryFileLike
 from .utils import download_media
 
 
 # ==== bases ====
-class BaseMultimodalPart(MessagePart):
+class BaseMultimodalPart(MessagePart, abc.ABC):
     model_config = ConfigDict(ignored_types=(functools.cached_property,))
 
 
@@ -30,15 +32,20 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
     When serialized, the binary is represented as a data URI. This can lead to some really big files!
     """
 
-    file: io.IOBase
+    file: BinaryFileLike
     """The readable binary file-like object containing the data."""
 
     mime: str
     """The MIME file type of the file."""
 
+    # ---- hashing helpers ----
+    # the file's mtime the last time we hashed it, used to see if we need to rehash
+    _last_hash_mtime: float = None
+    _last_hash: bytes = None
+
     # ==== constructors ====
     @classmethod
-    def from_file(cls, fp: PathLike | typing.BinaryIO, mime: str = None, **kwargs):
+    def from_file(cls, fp: PathLike | BinaryFileLike, mime: str = None, **kwargs):
         """
         Create a BinaryFilePart from a local file.
 
@@ -47,7 +54,9 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
             of the file. If not passed, will attempt to guess the filetype from the file name.
         """
         # file-like object
-        if isinstance(fp, io.IOBase):
+        if isinstance(fp, BinaryFileLike):
+            if hasattr(fp, "name") and isinstance(fp.name, str):  # fp.name can be int in the case of unnamed temp files
+                mime, encoding = mimetypes.guess_type(fp.name)
             if mime is None:
                 raise ValueError(
                     "The filetype cannot be guessed from the data when passing a file-like object to"
@@ -100,15 +109,24 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
         .. attention::
             Note that this classmethod is *asynchronous*, as it downloads data from the web!
 
+        .. tip::
+            Certain sites may download all binary data with the ``application/octet-stream`` MIME type. To set the
+            MIME type more precisely, use ``mime="..."``.
+
         Keyword arguments are passed to :meth:`from_file`.
         """
-        f = tempfile.NamedTemporaryFile(mode="w+b")
+        f = tempfile.TemporaryFile(mode="w+b")
         download_result = await download_media(url, f, allowed_mime=allowed_mime)
-        return cls.from_file(f, mime=download_result.mime, **kwargs)
+        f.flush()  # ensure all bytes are persisted to disk for stat purposes
+        kwargs.setdefault("mime", download_result.mime)
+        return cls.from_file(f, **kwargs)
 
     # ==== representations ====
     def as_bytes(self) -> bytes:
         """Return the full raw data. This could consume a lot of memory!"""
+        # this could be slow, but if we're using the same file a lot the OS should put it in RAM cache anyway,
+        # and if it runs out of RAM the OS should handle it automatically
+        # so we don't need to do memcaching here, thanks OS :)
         self.file.seek(0)
         return self.file.read()
 
@@ -127,16 +145,47 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
 
     # ==== helpers ====
     @property
-    def filesize(self):
-        """The size of the file, in bytes."""
+    def _stat(self) -> os.stat_result | None:
+        """The file's os.stat info, if available."""
         try:
             # if we have a file descriptor, use os stat
             fileno = self.file.fileno()
-            return os.stat(fileno).st_size
-        except io.UnsupportedOperation:
-            # otherwise we'll fall back to seek/tell
-            self.file.seek(0, os.SEEK_END)
-            return self.file.tell()
+            return os.stat(fileno)
+        except (io.UnsupportedOperation, AttributeError):
+            # otherwise return None
+            return None
+
+    @property
+    def filesize(self):
+        """The size of the file, in bytes."""
+        if stat := self._stat:
+            return stat.st_size
+        # otherwise we'll fall back to seek/tell
+        self.file.seek(0, os.SEEK_END)
+        return self.file.tell()
+
+    def sha256(self) -> bytes:
+        """
+        Return the SHA-256 hash of the file contents.
+
+        This method is preferred over manually using ``hashlib.sha256(part.as_bytes())`` as it is speed and
+        memory-optimized.
+        """
+        # if our file is real, we can return cache if it hasn't changed
+        if (stat := self._stat) and self._last_hash:
+            if stat.st_mtime == self._last_hash_mtime:
+                return self._last_hash
+            self._last_hash_mtime = stat.st_mtime
+        # otherwise,
+        # hash reading 64KiB at a time
+        self.file.seek(0)
+        the_hash = hashlib.sha256()
+        while part := self.file.read(65536):
+            the_hash.update(part)
+        # cache the hash and return
+        the_hash_bytes = the_hash.digest()
+        self._last_hash = the_hash_bytes
+        return the_hash_bytes
 
     # ==== serdes ====
     @model_serializer(when_used="json")

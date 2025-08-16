@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import io
 import mimetypes
 import re
@@ -124,6 +125,14 @@ class ImagePart(BaseMultimodalPart, arbitrary_types_allowed=True):
         return pil_to_tensor(self.image)
 
     # ==== helpers ====
+    def sha256(self) -> bytes:
+        """
+        Return the SHA-256 hash of the PIL image.
+        Note that this is not necessarily equivalent to the hash of the image file; it is the internal Pillow
+        representation. This should generally only be used to check if an image has been modified or not.
+        """
+        return hashlib.sha256(self.image.tobytes()).digest()
+
     @property
     def size(self) -> tuple[int, int]:
         """The size of the image, in pixels (width, height)."""

@@ -52,7 +52,7 @@ async def parts_from_cli_query(query: str) -> list[MessagePartType]:
         if not media_match["url"]:
             # ensure the path is valid
             if path := media_match["path"]:
-                fp = pathlib.Path(path)
+                fp = pathlib.Path(path.strip('"'))
             else:
                 fp = pathlib.Path(media_match["path_quot"].strip('"'))
 

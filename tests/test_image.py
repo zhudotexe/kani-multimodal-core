@@ -25,3 +25,10 @@ def test_roundtrip_json():
     part1 = ImagePart.from_file(TEST_IMAGE_PATH)
     part2 = ImagePart.model_validate_json(part1.model_dump_json())
     assert part1.as_bytes() == part2.as_bytes()
+
+
+def test_sha256():
+    part1 = ImagePart.from_file(TEST_IMAGE_PATH)
+    part2 = ImagePart.from_file(TEST_IMAGE_PATH)
+    assert part1.sha256()
+    assert part1.sha256() == part2.sha256()

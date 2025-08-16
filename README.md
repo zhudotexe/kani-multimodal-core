@@ -25,12 +25,14 @@ The package adds support for:
 
 - Images (`kani.ext.multimodal_core.ImagePart`)
 - Audio (`kani.ext.multimodal_core.AudioPart`)
-- Video (WIP)
+- Video (`kani.ext.multimodal_core.VideoPart`)
+- Other binary files, such as PDFs (`kani.ext.multimodal_core.BinaryFilePart`)
 
 When installed, these core kani engines will automatically use the multimodal parts:
 
 - OpenAIEngine
 - AnthropicEngine
+- GoogleAIEngine
 
 Additionally, the core kani `chat_in_terminal` method will support attaching multimodal data from a local drive or
 from the internet using `@/path/to/media` or `@https://example.com/media`.

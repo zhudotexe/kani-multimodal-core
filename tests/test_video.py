@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 from kani.ext.multimodal_core.video import VideoPart
@@ -32,3 +33,9 @@ def test_roundtrip_json():
     part1 = VideoPart.from_file(TEST_VIDEO_PATH)
     part2 = VideoPart.model_validate_json(part1.model_dump_json())
     assert part1.as_bytes() == part2.as_bytes()
+
+
+def test_sha256():
+    part1 = VideoPart.from_file(TEST_VIDEO_PATH)
+    assert part1.sha256()
+    assert part1.sha256() == hashlib.sha256(TEST_VIDEO_PATH.read_bytes()).digest()

@@ -1,3 +1,4 @@
+import hashlib
 import math
 from pathlib import Path
 
@@ -31,6 +32,7 @@ def test_sample_rate_remux():
     audio_part1 = AudioPart(raw=TEST_AUDIO_PATH_PCM.read_bytes(), sample_rate=24000)
     audio_part2 = AudioPart.from_file(TEST_AUDIO_PATH_WAV)
     assert audio_part1.as_bytes(sr=16000) == audio_part2.as_bytes(sr=16000)
+    assert audio_part1.as_bytes(sr=16000) == audio_part2.resample(sample_rate=16000).as_bytes()
 
 
 def test_numpy_equivalence():
@@ -57,3 +59,9 @@ def test_roundtrip_json():
     audio_part1 = AudioPart.from_file(TEST_AUDIO_PATH_WAV)
     audio_part2 = AudioPart.model_validate_json(audio_part1.model_dump_json())
     assert audio_part1.raw == audio_part2.raw
+
+
+def test_sha256():
+    audio_part = AudioPart.from_file(TEST_AUDIO_PATH_WAV)
+    assert audio_part.sha256()
+    assert audio_part.sha256() == hashlib.sha256(TEST_AUDIO_PATH_PCM.read_bytes()).digest()
