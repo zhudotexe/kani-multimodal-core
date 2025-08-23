@@ -7,6 +7,7 @@ from typing import IO, TYPE_CHECKING
 
 import numpy as np
 from PIL import Image
+from kani.utils import saveload
 from kani.utils.typing import PathLike
 from pydantic import model_serializer, model_validator
 
@@ -147,17 +148,30 @@ class ImagePart(BaseMultimodalPart, arbitrary_types_allowed=True):
         )
 
     # ==== serdes ====
-    @model_serializer(when_used="json")
-    def _serialize_imagepart(self) -> dict[str, str]:
-        """When we serialize to JSON, save the data as a URI"""
-        return {"img_data": self.as_b64_uri()}
+    @model_serializer()
+    def _serialize_imagepart(self, info) -> dict[str, str]:
+        """
+        When we serialize, save the data as:
+        - a URI when not in zipfile mode
+        - a PNG file when in zipfile mode
+        """
+        if ctx := saveload.get_ctx(info):
+            fp = ctx.save_bytes(self.as_bytes(format="png"), suffix=".png")
+            return {"_archive_path": fp, **self._get_typekey_dict()}
+        else:
+            return {"img_data": self.as_b64_uri(), **self._get_typekey_dict()}
 
     # noinspection PyNestedDecorators
     @model_validator(mode="wrap")
     @classmethod
-    def _validate_imagepart(cls, v, nxt):
+    def _validate_imagepart(cls, v, nxt, info):
         """If the value is the URI we saved, try loading it that way"""
-        if isinstance(v, dict) and "img_data" in v:
+        assert isinstance(v, dict)
+        if "_archive_path" in v:
+            ctx = saveload.get_ctx(info)
+            data = ctx.load_bytes(v["_archive_path"])
+            return cls.from_bytes(data, formats=["png"])
+        elif "img_data" in v:
             return cls.from_b64_uri(v["img_data"])
         return nxt(v)
 

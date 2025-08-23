@@ -8,6 +8,7 @@ import wave
 from typing import IO, TYPE_CHECKING
 
 import numpy as np
+from kani.utils import saveload
 from kani.utils.typing import PathLike
 from pydantic import Field, model_serializer, model_validator
 from pydub import AudioSegment
@@ -226,16 +227,29 @@ class AudioPart(BaseMultimodalPart):
         yield "raw", audio_repr
 
     # ==== serdes ====
-    @model_serializer(when_used="json")
-    def _serialize_audiopart(self) -> dict[str, str]:
-        """When we serialize to JSON, save the data as a URI"""
-        return {"wav_data": self.as_wav_b64_uri()}
+    @model_serializer()
+    def _serialize_audiopart(self, info) -> dict[str, str]:
+        """
+        When we serialize to JSON, save the data as:
+        - a URI when not in zipfile mode
+        - a WAV file when in zipfile mode
+        """
+        if ctx := saveload.get_ctx(info):
+            fp = ctx.save_bytes(self.as_wav_bytes(), suffix=".wav")
+            return {"_archive_path": fp, **self._get_typekey_dict()}
+        else:
+            return {"wav_data": self.as_wav_b64_uri(), **self._get_typekey_dict()}
 
     # noinspection PyNestedDecorators
     @model_validator(mode="wrap")
     @classmethod
-    def _validate_audiopart(cls, v, nxt):
+    def _validate_audiopart(cls, v, nxt, info):
         """If the value is the URI we saved, try loading it that way"""
-        if isinstance(v, dict) and "wav_data" in v:
+        assert isinstance(v, dict)
+        if "_archive_path" in v:
+            ctx = saveload.get_ctx(info)
+            wav_data = ctx.load_bytes(v["_archive_path"])
+            return cls.from_file(io.BytesIO(wav_data), format="wav")
+        elif "wav_data" in v:
             return cls.from_wav_b64_uri(v["wav_data"])
         return nxt(v)

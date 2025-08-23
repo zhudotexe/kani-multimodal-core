@@ -10,6 +10,7 @@ import tempfile
 import zlib
 
 from kani import MessagePart
+from kani.utils import saveload
 from kani.utils.typing import PathLike
 from pydantic import ConfigDict, model_serializer, model_validator
 
@@ -188,18 +189,32 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
         return the_hash_bytes
 
     # ==== serdes ====
-    @model_serializer(when_used="json")
-    def _serialize_binary_file_part(self) -> dict[str, str]:
-        """When we serialize to JSON, save the data as compressed B64."""
-        compressed_b64 = base64.b64encode(zlib.compress(self.as_bytes())).decode()
-        return {"mime": self.mime, "compression": "gzip", "data": compressed_b64}
+    @model_serializer()
+    def _serialize_binary_file_part(self, info) -> dict[str, str]:
+        """
+        When we serialize, save the data as:
+        - B64 of compressed data when not in zipfile mode
+        - a file when in zipfile mode
+        """
+        if ctx := saveload.get_ctx(info):
+            suffix = mimetypes.guess_extension(self.mime) or ""
+            fp = ctx.save_bytes(self.as_bytes(), suffix=suffix)
+            return {"_archive_path": fp, "mime": self.mime, **self._get_typekey_dict()}
+        else:
+            compressed_b64 = base64.b64encode(zlib.compress(self.as_bytes())).decode()
+            return {"mime": self.mime, "compression": "gzip", "data": compressed_b64, **self._get_typekey_dict()}
 
     # noinspection PyNestedDecorators
     @model_validator(mode="wrap")
     @classmethod
-    def _validate_binary_file_part(cls, v, nxt):
+    def _validate_binary_file_part(cls, v, nxt, info):
         """If the value is the URI we saved, try loading it that way."""
-        if isinstance(v, dict) and "data" in v:
+        assert isinstance(v, dict)
+        if "_archive_path" in v:
+            ctx = saveload.get_ctx(info)
+            data = ctx.load_bytes(v["_archive_path"])
+            return cls.from_bytes(data, mime=v["mime"])
+        elif "data" in v:
             if v.get("compression") == "gzip":
                 decompressed = zlib.decompress(base64.b64decode(v["data"]))
                 return cls.from_bytes(mime=v["mime"], data=decompressed)

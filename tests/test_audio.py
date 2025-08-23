@@ -2,8 +2,10 @@ import hashlib
 import math
 from pathlib import Path
 
+import pytest
 import soundfile
 import torchaudio
+from kani import ChatMessage, Kani
 from kani.ext.multimodal_core.audio import AudioPart
 
 from .utils import REPO_ROOT
@@ -65,3 +67,16 @@ def test_sha256():
     audio_part = AudioPart.from_file(TEST_AUDIO_PATH_WAV)
     assert audio_part.sha256()
     assert audio_part.sha256() == hashlib.sha256(TEST_AUDIO_PATH_PCM.read_bytes()).digest()
+
+
+@pytest.mark.parametrize("save_format", ("json", "kani"))
+def test_saveload(save_format, tmp_path, dummy_engine):
+    ai = Kani(dummy_engine, chat_history=[ChatMessage.user([AudioPart.from_file(TEST_AUDIO_PATH_WAV)])])
+
+    # save and load
+    ai.save(tmp_path / f"pytest.{save_format}", save_format=save_format)
+    loaded = Kani(dummy_engine)
+    loaded.load(tmp_path / f"pytest.{save_format}")
+
+    # assert equality
+    assert ai.chat_history[0].parts[0].raw == loaded.chat_history[0].parts[0].raw
