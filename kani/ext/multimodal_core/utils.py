@@ -54,4 +54,5 @@ async def download_media(url: str, f: IO, *, allowed_mime=("image/*", "audio/*",
             async for chunk in resp.content.iter_chunked(4096):
                 f.write(chunk)
                 bytes_downloaded += len(chunk)
+    f.flush()  # ensure all bytes are persisted to disk
     return DownloadResult(mime=mime, bytes_downloaded=bytes_downloaded)

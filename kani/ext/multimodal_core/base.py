@@ -118,7 +118,6 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
         """
         f = tempfile.TemporaryFile(mode="w+b")
         download_result = await download_media(url, f, allowed_mime=allowed_mime)
-        f.flush()  # ensure all bytes are persisted to disk for stat purposes
         kwargs.setdefault("mime", download_result.mime)
         return cls.from_file(f, **kwargs)
 
