@@ -38,6 +38,8 @@ async def download_media(url: str, f: IO, *, allowed_mime=("image/*", "audio/*",
     Expects the MIME type of the media to be image/*, audio/*, or video/*. You can override this by passing a list of
     globs in the ``allowed_mime`` parameter (e.g., ``allowed_mime=("*",)`` to allow downloading any media).
 
+    The file-like object will be seeked to the start after the download.
+
     :param url: The URL to download the media from.
     :param f: A writable binary file-like object to write the media content to.
     :param allowed_mime: A list of globs that the remote media MIME type must match one of.
@@ -55,4 +57,5 @@ async def download_media(url: str, f: IO, *, allowed_mime=("image/*", "audio/*",
                 f.write(chunk)
                 bytes_downloaded += len(chunk)
     f.flush()  # ensure all bytes are persisted to disk
+    f.seek(0)  # and that the file is available for an immediate read
     return DownloadResult(mime=mime, bytes_downloaded=bytes_downloaded)
