@@ -9,11 +9,11 @@ import re
 import tempfile
 import zlib
 
-from kani import MessagePart
 from kani.utils import saveload
 from kani.utils.typing import PathLike
 from pydantic import ConfigDict, model_serializer, model_validator
 
+from kani import MessagePart
 from .types import BinaryFileLike
 from .utils import download_media
 
@@ -223,18 +223,3 @@ class BinaryFilePart(BaseMultimodalPart, arbitrary_types_allowed=True):
     # ==== lifecycle ====
     def __del__(self):
         self.file.close()
-
-
-# ==== text ====
-class TextPart(BaseMultimodalPart):
-    """
-    A part representing basic text data.
-
-    Generally you can use a :class:`str` part instead. This part is useful when you need to store additional
-    engine-specific metadata alongside a text part.
-    """
-
-    text: str
-
-    def __str__(self):
-        return self.text

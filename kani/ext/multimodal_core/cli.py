@@ -13,7 +13,6 @@ import warnings
 from kani.models import MessagePartType
 
 from .audio import AudioPart
-from .base import TextPart
 from .image import ImagePart
 from .utils import get_mime_type
 from .video import VideoPart
@@ -116,7 +115,7 @@ def display_media(
     """
     # show each part in an IPython display
     for part in parts:
-        if isinstance(part, (str, TextPart)):
+        if isinstance(part, str):
             if show_text:
                 print(str(part))
         elif isinstance(part, ImagePart):
@@ -146,7 +145,7 @@ def display_media_ipython(
 
     # show each part in an IPython display
     for part in parts:
-        if isinstance(part, (str, TextPart)):
+        if isinstance(part, str):
             if show_text:
                 print(str(part))
         elif isinstance(part, ImagePart):
