@@ -9,11 +9,11 @@ import re
 import tempfile
 import zlib
 
+from kani import MessagePart
 from kani.utils import saveload
 from kani.utils.typing import PathLike
 from pydantic import ConfigDict, model_serializer, model_validator
 
-from kani import MessagePart
 from .types import BinaryFileLike
 from .utils import download_media
 
