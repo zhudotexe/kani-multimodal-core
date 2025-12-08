@@ -73,3 +73,27 @@ This utility allows you to provide multimodal media on your disk or on the inter
 >>> chat_in_terminal(ai)
 USER: Please describe this image: @path/to/image.png and also this one: @https://example.com/image.png
 ```
+
+## Returning Multimodal Content from AIFunctions
+
+What if an AI function returns multimodal content? By default, Kani applies certain transformations to the return value
+of an AIFunction in order:
+
+* if it is a :class:`.ChatMessage`, do not modify it
+* if it is a list of :class:`.MessagePart`, do not modify it
+* if it is a JSON-serializable Python dict, serialize it to JSON
+* if it is a Pydantic model, serialize it to JSON
+* otherwise, cast it to a string
+
+Thus, in order to return multimodal content, the AIFunction must return a FUNCTION-role chat message. For example, the
+following code snippet defines a function which returns an image:
+
+```python
+class MyKani(Kani):
+    @ai_function()
+    async def get_image(self, url: str):
+        """Download the image at a certain URL, and view it."""
+        return [await ImagePart.from_url(url)]
+```
+
+However, most API-based LLMs currently do not support multimodal returns from tools.
