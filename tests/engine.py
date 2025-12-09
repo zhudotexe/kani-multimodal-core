@@ -10,8 +10,8 @@ class TestEngine(BaseEngine):
 
     max_context_size = 10
 
-    def message_len(self, message: ChatMessage) -> int:
-        return len(message.text)
+    def prompt_len(self, messages, functions=None, **kwargs):
+        return sum(len(m.text) for m in messages)
 
     async def predict(self, messages, functions=None, test_echo=False, **hyperparams) -> Completion:
         """
